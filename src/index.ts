@@ -1,4 +1,6 @@
 import express from "express";
+import { createNoteSchema,updateNoteSchema } from "./validation/note.validation.js";
+
 
 const app =express();
 
@@ -17,8 +19,20 @@ type Note = {
 
 const notes :Note []=[] ;
 
-app.post("/notes",(req,res)=>{
-    const {title,content} = req.body;
+
+//creating note
+app.post("/notes",async(req,res)=>{
+    const result =await createNoteSchema.safeParseAsync(req.body) ;
+
+    if(!result.success){
+        return res.status(400).json({
+            status:false,
+            message:"Result not found"
+        })
+
+    };
+
+    const {title,content} = result.data;
 
     const newNote:Note={
         id:notes.length+1,
@@ -32,7 +46,7 @@ app.post("/notes",(req,res)=>{
 
 });
 
-
+//getting all note
 app.get("/notes",(req,res)=>{
   return res.json(notes);
 });
@@ -56,21 +70,35 @@ app.get("/notes/:id",(req , res)=>{
 
 });
 
-
-app.patch("/notes/:id",(req,res)=>{
+// updating note by id
+app.patch("/notes/:id",async (req,res)=>{
     const {id} = req.params;
 
     const noteId = Number(id);
 
-    const {title} = req.body;
+    const validationResult=await updateNoteSchema.safeParseAsync(req.body);
+
+    if(!validationResult.success){
+        return res.status(400).json({
+            status:false,
+            message:"valdiation error"
+        })
+    }
+
+    const {title}=validationResult.data;
 
     const note = notes.find((note)=>note.id===noteId);
     if(!note){
         return res.status(404).json({
             message:"note not found"
-        })    }
+        })   
+     }
 
-    note.title=title;
+     if(title!=undefined){
+        note.title=title;
+     }
+
+    
 
     return res.status(200).json({
         note
@@ -78,7 +106,7 @@ app.patch("/notes/:id",(req,res)=>{
 
 });
 
-
+// deleting note
 app.delete("/notes/:id",(req,res)=>{
     const {id} = req.params;
 
